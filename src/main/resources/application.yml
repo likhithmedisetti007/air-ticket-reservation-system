@@ -1,0 +1,7 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/
+      database: Week2Assignment
+server:
+  port: 9003
