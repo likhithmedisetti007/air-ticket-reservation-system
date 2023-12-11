@@ -1,8 +1,6 @@
 package com.likhith.demo.air.exception;
 
-import java.util.Date;
-
-public class ValidationException extends Exception {
+public class ValidationException extends RuntimeException {
 
 	/**
 	 * 
@@ -11,13 +9,11 @@ public class ValidationException extends Exception {
 
 	private int statusCode;
 	private String errorMessage;
-	private Date timestamp;
 
-	public ValidationException(int statusCode, String errorMessage, Date timestamp) {
+	public ValidationException(int statusCode, String errorMessage) {
 		super();
 		this.statusCode = statusCode;
 		this.errorMessage = errorMessage;
-		this.timestamp = timestamp;
 	}
 
 	public int getStatusCode() {
@@ -36,12 +32,9 @@ public class ValidationException extends Exception {
 		this.errorMessage = errorMessage;
 	}
 
-	public Date getTimestamp() {
-		return timestamp;
-	}
-
-	public void setTimestamp(Date timestamp) {
-		this.timestamp = timestamp;
+	@Override
+	public String toString() {
+		return "ValidationException [statusCode=" + statusCode + ", errorMessage=" + errorMessage + "]";
 	}
 
 }

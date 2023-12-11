@@ -6,7 +6,8 @@ import org.springframework.stereotype.Component;
 
 import com.likhith.demo.air.document.User;
 import com.likhith.demo.air.dto.AirTicketReservationResponse;
-import com.likhith.demo.air.exception.ErrorMessage;
+import com.likhith.demo.air.exception.TechnicalException;
+import com.likhith.demo.air.exception.ValidationException;
 import com.likhith.demo.air.repository.UserRepository;
 
 import reactor.core.publisher.Flux;
@@ -22,35 +23,26 @@ public class AirTicketReservationUserServiceImpl implements AirTicketReservation
 	public Flux<AirTicketReservationResponse> getAllUsers() {
 		return repository.findAll().flatMap(allUsers -> {
 			return Flux.just(new AirTicketReservationResponse(allUsers));
-		}).switchIfEmpty(Flux.just(
-				new AirTicketReservationResponse(new ErrorMessage(HttpStatus.NOT_FOUND.value(), "No Users found"))))
-				.onErrorResume(throwable -> {
-					return Flux.just(new AirTicketReservationResponse(
-							new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Error while fetching Users")));
-				});
+		}).switchIfEmpty(Flux.error(new ValidationException(HttpStatus.NOT_FOUND.value(), "No Users found")))
+				.onErrorMap(this::throwException);
 	}
 
 	@Override
 	public Mono<AirTicketReservationResponse> getUser(String id) {
 		return repository.findByUserId(id).flatMap(user -> Mono.just(new AirTicketReservationResponse(user)))
-				.switchIfEmpty(Mono.just(new AirTicketReservationResponse(
-						new ErrorMessage(HttpStatus.NOT_FOUND.value(), "No User found"))))
-				.onErrorResume(throwable -> {
-					return Mono.just(new AirTicketReservationResponse(
-							new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Error while fetching User")));
-				});
+				.switchIfEmpty(Mono.error(new ValidationException(HttpStatus.NOT_FOUND.value(), "No User found")))
+				.onErrorMap(this::throwException);
 	}
 
 	@Override
 	public Mono<AirTicketReservationResponse> createUser(User user) {
 		return repository.findByUserId(user.getUserId())
-				.flatMap(existingUser -> Mono.just(new AirTicketReservationResponse(
-						new ErrorMessage(HttpStatus.CONFLICT.value(), "User already exists"))))
+				.flatMap(existingUser -> Mono
+						.error(new ValidationException(HttpStatus.CONFLICT.value(), "User already exists")))
 				.switchIfEmpty(repository.save(user).map(savedUser -> {
 					savedUser.setMessage("User has been successfully Created");
 					return new AirTicketReservationResponse(savedUser);
-				})).onErrorResume(throwable -> Mono.just(new AirTicketReservationResponse(
-						new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Error while creating User"))));
+				})).onErrorMap(this::throwException).cast(AirTicketReservationResponse.class);
 	}
 
 	@Override
@@ -59,10 +51,8 @@ public class AirTicketReservationUserServiceImpl implements AirTicketReservation
 			user.setId(existingUser.getId());
 			user.setMessage("User has been successfully Updated");
 			return repository.save(user).thenReturn(new AirTicketReservationResponse(user));
-		}).switchIfEmpty(Mono.just(
-				new AirTicketReservationResponse(new ErrorMessage(HttpStatus.NOT_FOUND.value(), "No User found"))))
-				.onErrorResume(throwable -> Mono.just(new AirTicketReservationResponse(
-						new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Error while updating User"))));
+		}).switchIfEmpty(Mono.error(new ValidationException(HttpStatus.NOT_FOUND.value(), "No User found")))
+				.onErrorMap(this::throwException);
 	}
 
 	@Override
@@ -72,11 +62,24 @@ public class AirTicketReservationUserServiceImpl implements AirTicketReservation
 				.map(deletedUser -> {
 					deletedUser.setMessage("User has been Deleted successfully");
 					return new AirTicketReservationResponse(deletedUser);
-				})
-				.switchIfEmpty(Mono.just(new AirTicketReservationResponse(
-						new ErrorMessage(HttpStatus.NOT_FOUND.value(), "User not found"))))
-				.onErrorResume(throwable -> Mono.just(new AirTicketReservationResponse(
-						new ErrorMessage(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Error while updating User"))));
+				}).switchIfEmpty(Mono.error(new ValidationException(HttpStatus.NOT_FOUND.value(), "User not found")))
+				.onErrorMap(this::throwException);
+	}
+
+	private Throwable throwException(Throwable throwable) {
+
+		System.out.println(throwable);
+
+		if (throwable instanceof ValidationException) {
+			ValidationException exception = (ValidationException) throwable;
+			return new ValidationException(exception.getStatusCode(), exception.getErrorMessage());
+		} else if (throwable instanceof TechnicalException) {
+			TechnicalException exception = (TechnicalException) throwable;
+			return new TechnicalException(exception.getStatusCode(), exception.getErrorMessage());
+		} else {
+			return new RuntimeException();
+		}
+
 	}
 
 }

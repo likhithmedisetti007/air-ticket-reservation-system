@@ -1,7 +1,5 @@
 package com.likhith.demo.air.exception;
 
-import java.util.Date;
-
 public class TechnicalException extends RuntimeException {
 
 	/**
@@ -11,13 +9,11 @@ public class TechnicalException extends RuntimeException {
 
 	private int statusCode;
 	private String errorMessage;
-	private Date timestamp;
 
 	public TechnicalException(int statusCode, String errorMessage) {
 		super();
 		this.statusCode = statusCode;
 		this.errorMessage = errorMessage;
-		this.timestamp = new Date();
 	}
 
 	public int getStatusCode() {
@@ -36,12 +32,9 @@ public class TechnicalException extends RuntimeException {
 		this.errorMessage = errorMessage;
 	}
 
-	public Date getTimestamp() {
-		return timestamp;
-	}
-
-	public void setTimestamp(Date timestamp) {
-		this.timestamp = timestamp;
+	@Override
+	public String toString() {
+		return "TechnicalException [statusCode=" + statusCode + ", errorMessage=" + errorMessage + "]";
 	}
 
 }
